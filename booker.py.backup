@@ -1,0 +1,56 @@
+import mechanize
+import urllib2
+import re
+import time
+from bs4 import BeautifulSoup
+
+print "Welcome to the room booker\n"
+
+br = mechanize.Browser();
+
+br.addheaders = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
+
+br.open("https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx")
+
+month = time.strftime("%B")
+day = time.strftime("%d")
+
+#print "What day are you booking a room for? \n 1) Today \n 2) Tomorrow \n"
+
+day_select = raw_input("What day are you booking a room for? \n 1) Today \n 2) Tomorrow \n")
+
+dateString = month + " " + day
+
+try :
+    web_page = urllib2.urlopen("https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx").read()
+    soup = BeautifulSoup(web_page)
+    dateTag = soup.find("a", {"title" : dateString})
+
+except urllib2.HTTPError :
+
+    print("HTTPERROR!")
+
+except urllib2.URLError :
+
+    print("URLERROR!")
+
+dateUrl = dateTag.get('href')
+
+br.select_form(nr=0)
+
+print br.form
+
+#print "The link to follow is ", dateUrl
+
+#br.select_form(predicate=lambda f: f.attrs.get('id', None) == 'Form1')
+
+
+#firstParam = dateUrl[25:-9]
+
+#secondParam = dateUrl[-6:-2]
+
+#data1 = firstParam
+
+#data2 = secondParam
+
+
