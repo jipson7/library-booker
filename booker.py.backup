@@ -1,28 +1,69 @@
 import mechanize
-import urllib2
 import re
+import urllib2
 import time
-from bs4 import BeautifulSoup
+import Cookie
+import cookielib
+from bs4 import BeautifulSoup, SoupStrainer
 
-print "Welcome to the room booker\n"
+BASEURL = "https://rooms.library.dc-uoit.ca/uoit_studyrooms/"
+BROWSER_HEADERS = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
+thirdFloorRooms = ['LIB303', 'LIB304', 'LIB305', 'LIB306', 'LIB307', 'LIB309', 'LIB310']
+secondFloorRooms = ['LIB202A', 'LIB202B', 'LIB202C']
 
-br = mechanize.Browser();
+def makeList(table):
+    result = []
+    allrows = table.findAll('tr')
+    for row in allrows:
+        result.append([])
+        allcols = row.findAll('td')
+        for col in allcols:
+            thestrings = [unicode(s) for s in col.findAll(text=True)]
+            thetext = ''.join(thestrings)
+            result[-1].append(thetext)
+    return result
 
-br.addheaders = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
+#The following function is broken... It needs to be fixed post testing
+def getDateString():
+    
+    month = time.strftime("%B")
+    
+    day = time.strftime("%d")
+   
+    dateString = month + " " + "14"
 
-br.open("https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx")
+    return dateString
 
-month = time.strftime("%B")
-day = time.strftime("%d")
+def innerHTML(element):
+    return element.decode_contents(formatter="html")
 
-#print "What day are you booking a room for? \n 1) Today \n 2) Tomorrow \n"
+def incrementTime(time):
+    if time[-2]=="0":
+        time[-2] = "3"
+        return time
+    else:
+        if time[-4] != "9":
+            time[-4] = str(int(time[-4] + 1))
+            return time
+        else:
+            time = time[1:]
+            time = "10" + time
+            return time
 
-day_select = raw_input("What day are you booking a room for? \n 1) Today \n 2) Tomorrow \n")
 
-dateString = month + " " + day
+def searchThirdFloor(time):
+    for ii in thirdFloorRooms:
+        domTitle = "Time: " + time + ". Room no.: " + ii
+        matchingLinks = tableLinkSoup.find_all(attrs={"title" : domTitle})
+        for testLink in matchingLinks:
+            imgString = innerHTML(testLink)
+            if "images/open.gif" in imgString:
+                return testLink['href']
+
+dateString = getDateString()
 
 try :
-    web_page = urllib2.urlopen("https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx").read()
+    web_page = urllib2.urlopen(BASEURL + "calendar.aspx").read()
     soup = BeautifulSoup(web_page)
     dateTag = soup.find("a", {"title" : dateString})
 
@@ -36,21 +77,41 @@ except urllib2.URLError :
 
 dateUrl = dateTag.get('href')
 
+firstParam = dateUrl[25:-9]
+
+secondParam = dateUrl[-6:-2]
+
+br = mechanize.Browser()
+
+response = br.open(BASEURL + "calendar.aspx")
+
 br.select_form(nr=0)
 
-print br.form
+br.set_all_readonly(False)
 
-#print "The link to follow is ", dateUrl
+br["__EVENTTARGET"] = firstParam
 
-#br.select_form(predicate=lambda f: f.attrs.get('id', None) == 'Form1')
+br["__EVENTARGUMENT"] = secondParam
+
+response = br.submit()
+
+cj.save('cookies.txt', ignore_discard=False, ignore_expires=False)
+
+tableHtml = response.read()
+
+tableLinkSoup = BeautifulSoup(tableHtml, parse_only=SoupStrainer('a'))
+
+userSelectedTime = "8:00 PM"
+
+backOfBookingLink= (searchThirdFloor(userSelectedTime)).replace(" ", "%20")
+
+linkToBook = BASEURL + backOfBookingLink
+
+print linkToBook
+
+br.open(linkToBook)
+
+print br.geturl()
 
 
-#firstParam = dateUrl[25:-9]
-
-#secondParam = dateUrl[-6:-2]
-
-#data1 = firstParam
-
-#data2 = secondParam
-
-
+#maybe create a fake GET form to fake sending the data????

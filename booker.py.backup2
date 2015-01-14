@@ -1,26 +1,11 @@
-#BASEURL https://rooms.library.dc-uoit.ca/uoit_studyrooms/temp.aspx
-#starttime=11:30%20AM
-#room=LIB202B
-#next=viewleaveorjoin.aspx #This one doesn't change.
-
-
 import mechanize
 import re
 import urllib2
 import time
-import Cookie
-import cookielib
 from bs4 import BeautifulSoup, SoupStrainer
 
-cookiejar =cookielib.LWPCookieJar()
-
 BASEURL = "https://rooms.library.dc-uoit.ca/uoit_studyrooms/"
-
 BROWSER_HEADERS = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
-
-thirdFloorRooms = ['LIB303', 'LIB304', 'LIB305', 'LIB306', 'LIB307', 'LIB309', 'LIB310']
-
-secondFloorRooms = ['LIB202A', 'LIB202B', 'LIB202C']
 
 def makeList(table):
     result = []
@@ -94,23 +79,16 @@ secondParam = dateUrl[-6:-2]
 
 br = mechanize.Browser()
 
-br.set_cookiejar(cookiejar)
-cookie = cookielib.Cookie(version=0, name='PON', value="xxx.xxx.xxx.111", expires=365, port=None, port_specified=False, domain='xxxx', domain_specified=True, domain_initial_dot=False, path='/', path_specified=True, secure=True, discard=False, comment=None, comment_url=None, rest={'HttpOnly': False}, rfc2109=False)
-cookiejar.set_cookie(cookie)
-
 br.addheaders = BROWSER_HEADERS
 
 response = br.open(BASEURL + "calendar.aspx")
 
 br.select_form(nr=0)
-
 br.set_all_readonly(False)
-
 br["__EVENTTARGET"] = firstParam
-
 br["__EVENTARGUMENT"] = secondParam
-
 response = br.submit()
+
 
 tableHtml = response.read()
 
@@ -118,6 +96,9 @@ tableLinkSoup = BeautifulSoup(tableHtml, parse_only=SoupStrainer('a'))
 
 userSelectedTime = "8:00 PM"
 
+thirdFloorRooms = ['LIB303', 'LIB304', 'LIB305', 'LIB306', 'LIB307', 'LIB309', 'LIB310']
+
+secondFloorRooms = ['LIB202A', 'LIB202B', 'LIB202C']
 
 backOfBookingLink= (searchThirdFloor(userSelectedTime)).replace(" ", "%20")
 
@@ -125,9 +106,14 @@ linkToBook = BASEURL + backOfBookingLink
 
 print linkToBook
 
-br.open(linkToBook)
+br2 = mechanize.Browser()
 
-print br.geturl()
+br2.set_handle_robots(False)
 
+br2.addheaders = BROWSER_HEADERS
 
-#maybe create a fake GET form to fake sending the data????
+br2.open(linkToBook)
+
+response = br2.response().geturl()
+
+print response
