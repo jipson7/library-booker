@@ -41,7 +41,7 @@ def getDateString():
     
     day = time.strftime("%d")
    
-    dateString = month + " " + "14"
+    dateString = month + " " + "15"
 
     return dateString
 
@@ -61,6 +61,19 @@ def incrementTime(time):
             time = "10" + time
             return time
 
+def dumpCookieJar(cookieJar):
+    cookieFile = open('cookie.txt', 'w')
+    cookieStr = ''
+    for c in cookieJar:
+        cookieStr += c.name + "=" + c.value + ";"
+    cookieFile.write(cookieStr)
+    cookieFile.close()
+
+def reattachCookieJar(browser):
+    cookieFile = open('cookie.txt', 'r')
+    cookieStr = cookieFile.readline()
+    browser.set_cookie(cookieStr)
+    cookieFile.close()
 
 def searchThirdFloor(time):
     for ii in thirdFloorRooms:
@@ -94,10 +107,6 @@ secondParam = dateUrl[-6:-2]
 
 br = mechanize.Browser()
 
-br.set_cookiejar(cookiejar)
-cookie = cookielib.Cookie(version=0, name='PON', value="xxx.xxx.xxx.111", expires=365, port=None, port_specified=False, domain='xxxx', domain_specified=True, domain_initial_dot=False, path='/', path_specified=True, secure=True, discard=False, comment=None, comment_url=None, rest={'HttpOnly': False}, rfc2109=False)
-cookiejar.set_cookie(cookie)
-
 br.addheaders = BROWSER_HEADERS
 
 response = br.open(BASEURL + "calendar.aspx")
@@ -112,20 +121,30 @@ br["__EVENTARGUMENT"] = secondParam
 
 response = br.submit()
 
+print br._ua_handlers['_cookies'].cookiejar
+
+dumpCookieJar(br._ua_handlers['_cookies'].cookiejar)
+
 tableHtml = response.read()
 
 tableLinkSoup = BeautifulSoup(tableHtml, parse_only=SoupStrainer('a'))
 
 userSelectedTime = "8:00 PM"
 
-
 backOfBookingLink= (searchThirdFloor(userSelectedTime)).replace(" ", "%20")
 
 linkToBook = BASEURL + backOfBookingLink
 
-print linkToBook
+#print br.open(linkToBook)
 
-br.open(linkToBook)
+requestAlpha = mechanize.Request(linkToBook)
+
+cookiejar.add_cookie_header(requestAlpha)
+
+responseAlpha = mechanize.urlopen(requestAlpha)
+
+print responseAlpha.geturl()
+
 
 print br.geturl()
 
