@@ -1,152 +1,117 @@
-#BASEURL https://rooms.library.dc-uoit.ca/uoit_studyrooms/temp.aspx
-#starttime=11:30%20AM
-#room=LIB202B
-#next=viewleaveorjoin.aspx #This one doesn't change.
-
-
-import mechanize
-import re
-import urllib2
 import time
-import Cookie
-import cookielib
-from bs4 import BeautifulSoup, SoupStrainer
+from selenium.webdriver.common.by import By
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-cookiejar =cookielib.LWPCookieJar()
+STUDENT_INFORMATION = ["XXXXXXXXX", "XXXXXXXXXX"]
 
-BASEURL = "https://rooms.library.dc-uoit.ca/uoit_studyrooms/"
-
-BROWSER_HEADERS = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
-
-thirdFloorRooms = ['LIB303', 'LIB304', 'LIB305', 'LIB306', 'LIB307', 'LIB309', 'LIB310']
-
-secondFloorRooms = ['LIB202A', 'LIB202B', 'LIB202C']
-
-def makeList(table):
-    result = []
-    allrows = table.findAll('tr')
-    for row in allrows:
-        result.append([])
-        allcols = row.findAll('td')
-        for col in allcols:
-            thestrings = [unicode(s) for s in col.findAll(text=True)]
-            thetext = ''.join(thestrings)
-            result[-1].append(thetext)
-    return result
-
-#The following function is broken... It needs to be fixed post testing
 def getDateString():
-    
+
     month = time.strftime("%B")
     
     day = time.strftime("%d")
-   
-    dateString = month + " " + "15"
+           
+    dateString = month + " " + "21"
 
     return dateString
 
-def innerHTML(element):
-    return element.decode_contents(formatter="html")
+def requestTimeFromUser():
 
-def incrementTime(time):
-    if time[-2]=="0":
-        time[-2] = "3"
-        return time
-    else:
-        if time[-4] != "9":
-            time[-4] = str(int(time[-4] + 1))
-            return time
-        else:
-            time = time[1:]
-            time = "10" + time
-            return time
+    return "Time: 8:00 PM. Room no.: LIB303"
 
-def dumpCookieJar(cookieJar):
-    cookieFile = open('cookie.txt', 'w')
-    cookieStr = ''
-    for c in cookieJar:
-        cookieStr += c.name + "=" + c.value + ";"
-    cookieFile.write(cookieStr)
-    cookieFile.close()
+def checkConsecutiveFreeTime():
+    return true
 
-def reattachCookieJar(browser):
-    cookieFile = open('cookie.txt', 'r')
-    cookieStr = cookieFile.readline()
-    browser.set_cookie(cookieStr)
-    cookieFile.close()
+def checkIfTimeSlotIsFree():
+    return true
 
-def searchThirdFloor(time):
-    for ii in thirdFloorRooms:
-        domTitle = "Time: " + time + ". Room no.: " + ii
-        matchingLinks = tableLinkSoup.find_all(attrs={"title" : domTitle})
-        for testLink in matchingLinks:
-            imgString = innerHTML(testLink)
-            if "images/open.gif" in imgString:
-                return testLink['href']
+def clickLinkByTitle(title):
+    driver.find_element_by_css_selector("a[title='" + title  + "']").click() 
 
-dateString = getDateString()
+def fillInForm(studentNo, password):
+   studentElement =  driver.find_element_by_css_selector(
+           "input[name='ctl00$ContentPlaceHolder1$TextBoxStudentID']")
 
-try :
-    web_page = urllib2.urlopen(BASEURL + "calendar.aspx").read()
-    soup = BeautifulSoup(web_page)
-    dateTag = soup.find("a", {"title" : dateString})
+   passwordElement = driver.find_element_by_css_selector(
+           "input[name='ctl00$ContentPlaceHolder1$TextBoxPassword']")
 
-except urllib2.HTTPError :
+   groupNameElement = driver.find_element_by_css_selector(
+           "input[name='ctl00$ContentPlaceHolder1$TextBoxName']")
 
-    print("HTTPERROR!")
+   durationElement = driver.find_element_by_css_selector(
+           "#ContentPlaceHolder1_RadioButtonListDuration_3")
 
-except urllib2.URLError :
+   institutionElement = driver.find_element_by_css_selector(
+           "#ContentPlaceHolder1_RadioButtonListInstitutions_1")
 
-    print("URLERROR!")
+   groupCodeElement = driver.find_element_by_css_selector(
+           "#ContentPlaceHolder1_TextBoxGroupCode")
 
-dateUrl = dateTag.get('href')
+   submitButton = driver.find_element_by_css_selector(
+           "#ContentPlaceHolder1_ButtonReserve")
 
-firstParam = dateUrl[25:-9]
+   studentElement.send_keys(studentNo)
 
-secondParam = dateUrl[-6:-2]
+   passwordElement.send_keys(password)
 
-br = mechanize.Browser()
+   groupNameElement.send_keys("CSCI")
 
-br.addheaders = BROWSER_HEADERS
+   durationElement.click()
 
-response = br.open(BASEURL + "calendar.aspx")
+   institutionElement.click()
 
-br.select_form(nr=0)
+   groupCodeElement.send_keys("3334")
 
-br.set_all_readonly(False)
+   submitButton.click()
 
-br["__EVENTTARGET"] = firstParam
+###########################################################################
 
-br["__EVENTARGUMENT"] = secondParam
+datePickingURL = "https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx"
 
-response = br.submit()
+try:
 
-print br._ua_handlers['_cookies'].cookiejar
+    driver = webdriver.Chrome()
 
-dumpCookieJar(br._ua_handlers['_cookies'].cookiejar)
+except:
 
-tableHtml = response.read()
+    print "A connection error occured"
 
-tableLinkSoup = BeautifulSoup(tableHtml, parse_only=SoupStrainer('a'))
+driver.get(datePickingURL)
 
-userSelectedTime = "8:00 PM"
-
-backOfBookingLink= (searchThirdFloor(userSelectedTime)).replace(" ", "%20")
-
-linkToBook = BASEURL + backOfBookingLink
-
-#print br.open(linkToBook)
-
-requestAlpha = mechanize.Request(linkToBook)
-
-cookiejar.add_cookie_header(requestAlpha)
-
-responseAlpha = mechanize.urlopen(requestAlpha)
-
-print responseAlpha.geturl()
+try:
 
 
-print br.geturl()
+    element = WebDriverWait(driver, 10).until(
 
+        EC.presence_of_element_located((By.ID, "ContentPlaceHolder1_LabelInitialMessage"))
+)
 
-#maybe create a fake GET form to fake sending the data????
+except:
+
+    print "Error loading inital page"
+
+dateSelection = getDateString()
+
+#time.sleep(1)
+
+clickLinkByTitle(dateSelection)
+
+timeSelection = requestTimeFromUser()
+
+#time.sleep(1)
+
+clickLinkByTitle(timeSelection)
+
+try:
+
+    element = WebDriverWait(driver, 10).until(
+
+        EC.presence_of_element_located((By.CLASS_NAME, "SiteFooter"))
+    )
+
+except:
+
+    print "Error following first link/loading second page"
+
+fillInForm(STUDENT_INFORMATION[0], STUDENT_INFORMATION[1])

@@ -1,7 +1,6 @@
-This is a python script that will eventually be used to automate the process of booking multi-person rooms at the library.
+This is a python script used to automate the process of booking a library room at UOIT
 
-There are 2 ASP links that must be traversed and then the form to be filled out for multiple people.
+It uses selenium and a chromedriver at the moment. Logs in 1 person successfully, Using the username and password stored in STUDENT INFORMATION
 
-Currently the first link is succesfully "clicked"
+The .old file contains a version using mechanize that doesnt currently work.
 
-Progress on the second one requires an efficient and organized way to traverse and interact with an html table in python
