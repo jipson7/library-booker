@@ -1,6 +1,13 @@
 This is a python script used to automate the process of booking a library room at UOIT
 
-It uses selenium and a chromedriver at the moment. Logs in 1 person successfully, Using the username and password stored in STUDENT INFORMATION
+It uses selenium and a chromedriver at the moment. Requests a time and day, and finds the first available room with those specifications,
 
-The .old file contains a version using mechanize that doesnt currently work.
+as well as 4 consecutive available timeslots. It also adds a second person, although there are still a few boundary cases that need to be worked out.
+
+
+
+
+
+Any student number password combinations that are needed should be added to STUDENT INFORMATION at the top of the file.
+
 

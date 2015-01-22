@@ -8,10 +8,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException 
 
-STUDENT_INFORMATION = ["100518555", "Siahjack1"]
+STUDENT_INFORMATION = [["XXXXXXXXX", "XXXXXXXXX"],["testtest", "testtest"]]
 
-TIME_SELECTION = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM",
-        "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM",
+TIME_SELECTION = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
+        "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM",
         "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
         "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM",
         "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM"]
@@ -101,8 +101,6 @@ def getDateString(stringDay):
 
 def getOpenRoomTag():
 
-    #return ("Time: " + userSelectedTime + ". Room no.: LIB303")
-
    global scriptSelectedRoom
 
    for room in ROOM_SELECTION:
@@ -114,6 +112,8 @@ def getOpenRoomTag():
            return buildTimeRoomTag(userSelectedTime, room)
 
    print "No available rooms at the specified time"
+
+   driver.close()
 
    sys.exit()
 
@@ -137,6 +137,7 @@ def checkIfTimeSlotIsFree(userTime, room):
                "img[title='" + buildTimeRoomTag(userTime, room) + "']")
    
    except NoSuchElementException:
+
        return False
 
    return True
@@ -186,19 +187,82 @@ def fillInFormInitial(studentNo, password):
 
     
 
-   try:
+   if not checkIfPageLoadByID("ContentPlaceHolder1_LabelMessage"):
+
+      driver.close()
+      sys.exit()
+
+def checkIfPageLoadByID(elementID):
+
+    try:
 
 
-      element = WebDriverWait(driver, 10).until(
+        element = WebDriverWait(driver, 10).until(
 
-          EC.presence_of_element_located((By.ID, "ContentPlaceHolder1_LabelMessage"))
-      )
+            EC.presence_of_element_located((By.ID, elementID))
+        )
+    except:
+        print "Error loading page"
+        return False
+    
+    return True
 
-   except:
 
-      print "Error filling out form"
+def getToTimetable():
 
+
+   driver.get(datePickingURL)
+
+   if not checkIfPageLoadByID("ContentPlaceHolder1_LabelInitialMessage"):
+     
+      driver.close()
+      sys.exit()
    
+   clickLinkByTitle(userSelectedDate)
+
+
+def addAdditionalUsers(studentNo, studentPass):
+
+    getToTimetable()
+
+    clickLinkByTitle(secondTimeLink)
+
+    if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1"):
+
+        driver.close()
+        sys.exit()
+
+    joinButton = driver.find_element_by_css_selector(
+            "#ContentPlaceHolder1_ButtonJoinOrCreate")
+
+    radioNext = driver.find_element_by_css_selector(
+            "#ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1")
+
+    radioNext.click()
+
+    joinButton.click()
+
+    if not checkIfPageLoadByID("ContentPlaceHolder1_ButtonJoin"):
+
+        driver.close()
+        sys.exit()
+   
+    studentNoElement = driver.find_element_by_css_selector(
+            "#ContentPlaceHolder1_TextBoxID")
+
+    studentPassElement = driver.find_element_by_css_selector(
+            "#ContentPlaceHolder1_TextBoxPassword")
+
+    joinSubmitButton = driver.find_element_by_css_selector(
+            "#ContentPlaceHolder1_ButtonJoin")
+
+    studentNoElement.send_keys(studentNo)
+
+    studentPassElement.send_keys(studentPass)
+
+    #joinSubmitButton.click()
+
+    ######Add check to see if user was added succesfully, and print message to console
 
 ###########################################################################
 
@@ -213,41 +277,34 @@ except:
 
     print "A connection error occured"
 
-driver.get(datePickingURL)
-
-try:
-
-
-    element = WebDriverWait(driver, 10).until(
-
-        EC.presence_of_element_located((By.ID, "ContentPlaceHolder1_LabelInitialMessage"))
-)
-
-except:
-
-    print "Error loading inital page"
-
-#time.sleep(1)
-
-clickLinkByTitle(userSelectedDate)
+getToTimetable()
 
 timeSelection = getOpenRoomTag()
 
-#time.sleep(1)
-
 clickLinkByTitle(timeSelection)
 
-try:
+if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListDuration_3"):
 
-    element = WebDriverWait(driver, 10).until(
+    driver.close()
+    sys.exit()
 
-        EC.presence_of_element_located((By.CLASS_NAME, "SiteFooter"))
-    )
+fillInFormInitial(STUDENT_INFORMATION[0][0], STUDENT_INFORMATION[0][1])
 
-except:
+print ("\nInitial booking of " + scriptSelectedRoom + " at " + userSelectedTime + " on " + 
+        userSelectedDate + " was successful")
 
-    print "Error following first link/loading second page"
+###########################################################################
+#The Following code is to add other people to group#######################
 
-fillInFormInitial(STUDENT_INFORMATION[0], STUDENT_INFORMATION[1])
+secondTimeLink = userSelectedTime + " / " + scriptSelectedRoom + ". Incomplete reservation. This slot is open for reservation"
 
-print ("Successfully booked " + scriptSelectedRoom + " at " + userSelectedTime)
+addAdditionalUsers(STUDENT_INFORMATION[1][0], STUDENT_INFORMATION[1][1])
+#driver.close()
+
+
+
+
+
+
+
+
