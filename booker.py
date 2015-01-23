@@ -11,6 +11,8 @@ from selenium.common.exceptions import NoSuchElementException
 
 STUDENT_INFORMATION = []
 
+NUMBER_OF_CREDENTIALS = 0
+
 TIME_SELECTION = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
         "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM",
         "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
@@ -32,9 +34,13 @@ def loadUserData():
 
     global STUDENT_INFORMATION
 
+    global NUMBER_OF_CREDENTIALS
+
     userFile = open("studentInfo.txt", "r")
 
     for line in iter(userFile):
+
+       NUMBER_OF_CREDENTIALS = NUMBER_OF_CREDENTIALS + 1
 
        STUDENT_INFORMATION.append(line.split()) 
 
@@ -118,6 +124,10 @@ def getOpenRoomTag():
    global scriptSelectedRoom
 
    for room in ROOM_SELECTION:
+
+       if ((NUMBER_OF_CREDENTIALS == 2) & (room[3] == "3")):
+
+           continue
        
        if checkConsecutiveFreeTime(userSelectedTime, room):
 
@@ -323,13 +333,13 @@ if (scriptSelectedRoom[3] == "3"):
 
         addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
 
-        print ("User " + STUDENT_INFORMTION[jj][0] + " was registered successfully.\n")
+        print ("User " + STUDENT_INFORMATION[jj][0] + " was registered successfully.\n")
 
 else:
 
-    addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
+    addAdditionalUsers(STUDENT_INFORMATION[1][0], STUDENT_INFORMATION[1][1])
 
-    print ("User " + STUDENT_INFORMTION[jj][0] + " was registered successfully.\n")
+    print ("User " + STUDENT_INFORMATION[1][0] + " was registered successfully.\n")
 
 
 print ("Booking of " + scriptSelectedRoom + " at " + userSelectedTime + " on " + 
