@@ -2,13 +2,14 @@ import time
 import datetime
 import sys
 import os
+import io
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException 
 
-STUDENT_INFORMATION = [["XXXXXXXXX", "XXXXXXXXX"],["testtest", "testtest"]]
+STUDENT_INFORMATION = []
 
 TIME_SELECTION = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
         "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM",
@@ -26,6 +27,19 @@ userSelectedTime = ""
 userSelectedDate = ""
 
 scriptSelectedRoom = ""
+
+def loadUserData():
+
+    global STUDENT_INFORMATION
+
+    userFile = open("studentInfo.txt", "r")
+
+    for line in iter(userFile):
+
+       STUDENT_INFORMATION.append(line.split()) 
+
+    userFile.close()
+
 
 def askUserQuestions():
 
@@ -113,9 +127,7 @@ def getOpenRoomTag():
 
    print "No available rooms at the specified time"
 
-   driver.close()
-
-   sys.exit()
+   exitProgram()
 
 def checkConsecutiveFreeTime(userTime, room):
 
@@ -185,12 +197,9 @@ def fillInFormInitial(studentNo, password):
 
    submitButton.click()
 
-    
-
    if not checkIfPageLoadByID("ContentPlaceHolder1_LabelMessage"):
 
-      driver.close()
-      sys.exit()
+      exitProgram()
 
 def checkIfPageLoadByID(elementID):
 
@@ -210,14 +219,12 @@ def checkIfPageLoadByID(elementID):
 
 def getToTimetable():
 
-
    driver.get(datePickingURL)
 
    if not checkIfPageLoadByID("ContentPlaceHolder1_LabelInitialMessage"):
      
-      driver.close()
-      sys.exit()
-   
+      exitProgram() 
+       
    clickLinkByTitle(userSelectedDate)
 
 
@@ -229,8 +236,7 @@ def addAdditionalUsers(studentNo, studentPass):
 
     if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1"):
 
-        driver.close()
-        sys.exit()
+        exitProgram()
 
     joinButton = driver.find_element_by_css_selector(
             "#ContentPlaceHolder1_ButtonJoinOrCreate")
@@ -244,9 +250,8 @@ def addAdditionalUsers(studentNo, studentPass):
 
     if not checkIfPageLoadByID("ContentPlaceHolder1_ButtonJoin"):
 
-        driver.close()
-        sys.exit()
-   
+        exitProgram()
+
     studentNoElement = driver.find_element_by_css_selector(
             "#ContentPlaceHolder1_TextBoxID")
 
@@ -254,17 +259,30 @@ def addAdditionalUsers(studentNo, studentPass):
             "#ContentPlaceHolder1_TextBoxPassword")
 
     joinSubmitButton = driver.find_element_by_css_selector(
-            "#ContentPlaceHolder1_ButtonJoin")
+            "input[name='ctl00$ContentPlaceHolder1$ButtonJoin']")
 
     studentNoElement.send_keys(studentNo)
 
     studentPassElement.send_keys(studentPass)
 
-    #joinSubmitButton.click()
+    joinSubmitButton.click()
+
+    if not checkIfPageLoadByID("ContentPlaceHolder1_LabelMessage"):
+
+        exitProgram()
+
 
     ######Add check to see if user was added succesfully, and print message to console
 
+def exitProgram():
+
+    driver.close()
+    sys.exit()
+
+
 ###########################################################################
+
+loadUserData()
 
 askUserQuestions()
 
@@ -285,8 +303,7 @@ clickLinkByTitle(timeSelection)
 
 if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListDuration_3"):
 
-    driver.close()
-    sys.exit()
+    exitProgram()
 
 fillInFormInitial(STUDENT_INFORMATION[0][0], STUDENT_INFORMATION[0][1])
 
@@ -298,13 +315,25 @@ print ("\nInitial booking of " + scriptSelectedRoom + " at " + userSelectedTime 
 
 secondTimeLink = userSelectedTime + " / " + scriptSelectedRoom + ". Incomplete reservation. This slot is open for reservation"
 
-addAdditionalUsers(STUDENT_INFORMATION[1][0], STUDENT_INFORMATION[1][1])
-#driver.close()
+if (scriptSelectedRoom[3] == "3"):
+
+    for ii in range(2):
+
+        jj = ii + 1
+
+        addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
+
+        print ("User " + STUDENT_INFORMTION[jj][0] + " was registered successfully.\n")
+
+else:
+
+    addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
+
+    print ("User " + STUDENT_INFORMTION[jj][0] + " was registered successfully.\n")
 
 
+print ("Booking of " + scriptSelectedRoom + " at " + userSelectedTime + " on " + 
+        userSelectedDate + " was successful")
 
 
-
-
-
-
+exitProgram()
