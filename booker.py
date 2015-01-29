@@ -3,6 +3,7 @@ import datetime
 import sys
 import os
 import io
+from random import randint
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -11,7 +12,11 @@ from selenium.common.exceptions import NoSuchElementException
 
 STUDENT_INFORMATION = []
 
+ROOMTYPE = 0
+
 NUMBER_OF_CREDENTIALS = 0
+
+GROUP_CODE = "9435"
 
 TIME_SELECTION = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
         "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM",
@@ -24,11 +29,17 @@ ROOM_SELECTION = ["LIB310", "LIB309", "LIB307", "LIB306", "LIB305", "LIB304",
 
 datePickingURL = "https://rooms.library.dc-uoit.ca/uoit_studyrooms/calendar.aspx"
 
-userSelectedTime = ""
+driver = 0
 
 userSelectedDate = ""
 
+userSelectedTime = ""
+
 scriptSelectedRoom = ""
+
+roomTagToClick = ""
+
+conflictedRoom = False
 
 def loadUserData():
 
@@ -46,12 +57,13 @@ def loadUserData():
 
     userFile.close()
 
-
 def askUserQuestions():
 
     global userSelectedDate
 
     global userSelectedTime
+
+    global ROOMTYPE
     
     print "Are you booking for (1) Today or (2) Tomorrow"
 
@@ -84,7 +96,19 @@ def askUserQuestions():
         else:
 
             print "Invalid entry, try again (Ex. 5:00 PM)"
-    
+
+    while(True):
+
+    	ROOMTYPE = raw_input(
+    		"\nWhich type of room would you like to book, (2) Person or (3) Person ")
+
+    	if ((ROOMTYPE == "2") | (ROOMTYPE == "3")):
+    		break
+
+    	else:
+
+    		print "Invalid selection, try again"
+
 
 def getDateString(stringDay):
 
@@ -119,37 +143,103 @@ def getDateString(stringDay):
 
     return dateString
 
-def getOpenRoomTag():
+def createWebDriver():
 
-   global scriptSelectedRoom
+	global driver
 
-   for room in ROOM_SELECTION:
+	try:
 
-       if ((NUMBER_OF_CREDENTIALS == 2) & (room[3] == "3")):
+         driver = webdriver.Chrome()
 
-           continue
+	except:
+
+    	 print "A connection error occured"
+
+    	 return
+
+
+def getToTimetable():
+
+    driver.get(datePickingURL)
+
+    if not checkIfPageLoadByID("ContentPlaceHolder1_LabelInitialMessage"):
+     
+       	exitProgram() 
        
-       if checkConsecutiveFreeTime(userSelectedTime, room):
+    clickLinkByTitle(userSelectedDate)
 
-           scriptSelectedRoom = room
+def checkIfPageLoadByID(elementID):
 
-           return buildTimeRoomTag(userSelectedTime, room)
+    try:
 
-   print "No available rooms at the specified time"
+        element = WebDriverWait(driver, 10).until(
 
-   exitProgram()
+            EC.presence_of_element_located((By.ID, elementID))
+        )
+    except:
+
+        return False
+    
+    return True
+
+def clickLinkByTitle(title):
+    driver.find_element_by_css_selector("a[title='" + title  + "']").click()
+
+def clickRadioByID(idVal):
+    driver.find_element_by_css_selector("input[title='" + idVal  + "']").click()
+
+def findOpenRoom():
+
+	global scriptSelectedRoom
+
+	for room in ROOM_SELECTION:
+
+		if ((ROOMTYPE == "2") & (room[3] == "3")):
+
+			continue
+
+		if checkConsecutiveFreeTime(userSelectedTime, room):
+
+			scriptSelectedRoom = room
+
+			return True
+
+	print "No Rooms available at specified time"
+
+	return False
 
 def checkConsecutiveFreeTime(userTime, room):
 
-    timeLocation = TIME_SELECTION.index(userTime)
+	global roomTagToClick
+
+	global conflictedRoom
+	timeLocation = TIME_SELECTION.index(userTime)
+
+	if not checkIfTimeSlotIsFree(TIME_SELECTION[timeLocation], room):
+
+		return False
+
+
+
+	try:
+		driver.find_element_by_css_selector(
+			"img[title='" + buildTimeRoomTag(userTime, room) + "']")
+
+		roomTagToClick = "img[title='" + buildTimeRoomTag(userTime, room) + "']"
+   
+	except NoSuchElementException:
+       
+		roomTagToClick = "img[title='" + buildTimeRoomTagConflicted(userTime, room) +"']"
+
+		conflictedRoom = True
         
-    for ii in range(4):
+	for ii in range(3):
 
-        if not checkIfTimeSlotIsFree(TIME_SELECTION[ii], room):
+		if not checkIfTimeSlotIsFree(TIME_SELECTION[timeLocation + ii + 1], room):
 
-            return False
+			return False
 
-    return True
+	return True
 
 def checkIfTimeSlotIsFree(userTime, room):
   
@@ -159,17 +249,25 @@ def checkIfTimeSlotIsFree(userTime, room):
                "img[title='" + buildTimeRoomTag(userTime, room) + "']")
    
    except NoSuchElementException:
+       
+       try:
+           driver.find_element_by_css_selector(
+                   "img[title='" + buildTimeRoomTagConflicted(userTime, room) +"']")
 
-       return False
+       except NoSuchElementException:
+
+           return False
 
    return True
 
 def buildTimeRoomTag(userTime, room):
-    
-    return ("Time: " + userSelectedTime + ". Room no.: " + room)
 
-def clickLinkByTitle(title):
-    driver.find_element_by_css_selector("a[title='" + title  + "']").click() 
+    return ("Time: " + userTime + ". Room no.: " + room)
+
+def buildTimeRoomTagConflicted(userTime, room):
+
+    return (userTime + " / " + room + 
+            ". Incomplete reservation. This slot is open for reservation")
 
 def fillInFormInitial(studentNo, password):
    studentElement =  driver.find_element_by_css_selector(
@@ -203,147 +301,152 @@ def fillInFormInitial(studentNo, password):
 
    institutionElement.click()
 
-   groupCodeElement.send_keys("3334")
+   groupCodeElement.send_keys(GROUP_CODE)
 
    submitButton.click()
 
-   if not checkIfPageLoadByID("ContentPlaceHolder1_LabelMessage"):
-
-      exitProgram()
-
-def checkIfPageLoadByID(elementID):
-
-    try:
-
-
-        element = WebDriverWait(driver, 10).until(
-
-            EC.presence_of_element_located((By.ID, elementID))
-        )
-    except:
-        print "Error loading page"
-        return False
-    
-    return True
-
-
-def getToTimetable():
-
-   driver.get(datePickingURL)
-
-   if not checkIfPageLoadByID("ContentPlaceHolder1_LabelInitialMessage"):
-     
-      exitProgram() 
-       
-   clickLinkByTitle(userSelectedDate)
-
-
 def addAdditionalUsers(studentNo, studentPass):
 
-    getToTimetable()
+	getToTimetable()
 
-    clickLinkByTitle(secondTimeLink)
+	clickLinkByTitle(buildTimeRoomTagConflicted(userSelectedTime, scriptSelectedRoom))
 
-    if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1"):
+	if not checkIfPageLoadByID(
+		"ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1"):
 
-        exitProgram()
+		exitProgram()
 
-    joinButton = driver.find_element_by_css_selector(
-            "#ContentPlaceHolder1_ButtonJoinOrCreate")
+	joinButton = driver.find_element_by_css_selector(
+		"#ContentPlaceHolder1_ButtonJoinOrCreate")
 
-    radioNext = driver.find_element_by_css_selector(
-            "#ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_1")
+	radioNext = driver.find_element_by_css_selector(
+		"input[value='" + str(GROUP_CODE) + "']")
 
-    radioNext.click()
+	radioNext.click()
 
-    joinButton.click()
+	joinButton.click()
 
-    if not checkIfPageLoadByID("ContentPlaceHolder1_ButtonJoin"):
+	if not checkIfPageLoadByID("ContentPlaceHolder1_ButtonJoin"):
 
-        exitProgram()
+		exitProgram()
 
-    studentNoElement = driver.find_element_by_css_selector(
-            "#ContentPlaceHolder1_TextBoxID")
+	studentNoElement = driver.find_element_by_css_selector(
+		"#ContentPlaceHolder1_TextBoxID")
 
-    studentPassElement = driver.find_element_by_css_selector(
-            "#ContentPlaceHolder1_TextBoxPassword")
+	studentPassElement = driver.find_element_by_css_selector(
+		"#ContentPlaceHolder1_TextBoxPassword")
 
-    joinSubmitButton = driver.find_element_by_css_selector(
-            "input[name='ctl00$ContentPlaceHolder1$ButtonJoin']")
+	joinSubmitButton = driver.find_element_by_css_selector(
+		"input[name='ctl00$ContentPlaceHolder1$ButtonJoin']")
 
-    studentNoElement.send_keys(studentNo)
+	studentNoElement.send_keys(studentNo)
 
-    studentPassElement.send_keys(studentPass)
+	studentPassElement.send_keys(studentPass)
 
-    joinSubmitButton.click()
+	joinSubmitButton.click()
 
-    if not checkIfPageLoadByID("ContentPlaceHolder1_LabelMessage"):
+def main():
 
-        exitProgram()
+	createWebDriver()
+
+	getToTimetable()
+
+	if (findOpenRoom()):
+
+		 driver.find_element_by_css_selector(roomTagToClick).click()
+
+	else:
+
+		exitProgram()
+
+	if (conflictedRoom):
+
+		if(checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_0")):
+  			
+			clickRadioByID("ContentPlaceHolder1_RadioButtonListJoinOrCreateGroup_0")
+
+			print "checking if conflicted loads"
+
+		else:
+
+  			exitProgram()
 
 
-    ######Add check to see if user was added succesfully, and print message to console
+	if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListDuration_3"):
+
+		exitProgram()
+
+
+	fillInFormInitial(STUDENT_INFORMATION[0][0], STUDENT_INFORMATION[0][1])
+
+	try:
+
+		driver.find_element_by_css_selector("#ContentPlaceHolder1_LabelError");
+
+		driver.close()
+
+		print "Changing group code"
+
+		changeGroupCode()
+
+		print ("Code Changed to " + str(GROUP_CODE))
+
+		main()
+
+	except NoSuchElementException:
+
+		print "Initial form filling successful for user " + STUDENT_INFORMATION[0][0]
+
+	if (ROOMTYPE == "3"):
+
+		for ii in range(2):
+
+			jj = ii + 1
+
+			addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
+
+			print ("User " + STUDENT_INFORMATION[jj][0] + " was registered successfully.\n")
+
+	else:
+
+		addAdditionalUsers(STUDENT_INFORMATION[1][0], STUDENT_INFORMATION[1][1])
+
+		print ("User " + STUDENT_INFORMATION[1][0] + " was registered successfully.\n")
+
+
+	print ("Booking of " + scriptSelectedRoom + " at " + 
+		userSelectedTime + " on " + userSelectedDate + " was successful")
+
+	time.sleep(3)
+
+	exitProgram();
+
 
 def exitProgram():
 
     driver.close()
     sys.exit()
 
+def changeGroupCode():
 
-###########################################################################
+	global driver
+
+	global GROUP_CODE
+
+	driver = 0
+
+	GROUP_CODE = randint(1000, 9999)
 
 loadUserData()
 
 askUserQuestions()
 
-
-try:
-
-    driver = webdriver.Chrome()
-
-except:
-
-    print "A connection error occured"
-
-getToTimetable()
-
-timeSelection = getOpenRoomTag()
-
-clickLinkByTitle(timeSelection)
-
-if not checkIfPageLoadByID("ContentPlaceHolder1_RadioButtonListDuration_3"):
-
-    exitProgram()
-
-fillInFormInitial(STUDENT_INFORMATION[0][0], STUDENT_INFORMATION[0][1])
-
-print ("\nInitial booking of " + scriptSelectedRoom + " at " + userSelectedTime + " on " + 
-        userSelectedDate + " was successful")
-
-###########################################################################
-#The Following code is to add other people to group#######################
-
-secondTimeLink = userSelectedTime + " / " + scriptSelectedRoom + ". Incomplete reservation. This slot is open for reservation"
-
-if (scriptSelectedRoom[3] == "3"):
-
-    for ii in range(2):
-
-        jj = ii + 1
-
-        addAdditionalUsers(STUDENT_INFORMATION[jj][0], STUDENT_INFORMATION[jj][1])
-
-        print ("User " + STUDENT_INFORMATION[jj][0] + " was registered successfully.\n")
-
-else:
-
-    addAdditionalUsers(STUDENT_INFORMATION[1][0], STUDENT_INFORMATION[1][1])
-
-    print ("User " + STUDENT_INFORMATION[1][0] + " was registered successfully.\n")
+main()
 
 
-print ("Booking of " + scriptSelectedRoom + " at " + userSelectedTime + " on " + 
-        userSelectedDate + " was successful")
 
 
-exitProgram()
+
+
+
+

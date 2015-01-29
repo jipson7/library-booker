@@ -1,21 +1,7 @@
-This is a python script used to automate the process of booking a library room at UOIT
+This is a python script used to automate the process of booking a library room for several people at UOIT.
 
-It uses selenium and a chromedriver. Requests a time and day, and
+It uses a user specified date, time, and room type from the command line to book the room. It has several layers or error checking for room and time conflictions. Currently it does not allow a user to specify a duration (it defaults to 2 hours), basically because we've never needed anything less. 
 
-finds the first available room with those specifications. It searches
+The credentials needed to fill a form should be placed in the same directory in a file called "studentInfo.txt". This file should contain 1 student number and 1 password per row, separated by a space.
 
-the 3 person rooms first. If none of those are available at the specified
-
-times then it will search the two person rooms.
-
-If only 2 sets of credentials are available,
-
-it will select from the second floor rooms.
-
-It uses credentials stored in studentInfo.txt that should be stored in the same directory
-
-The credential should be a student number and a password, 1 set per line,
-
-separated by a space.
-
-
+The script uses selenium and a chrome web driver to perform.
