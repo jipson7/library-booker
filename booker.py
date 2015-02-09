@@ -397,7 +397,7 @@ def main():
 
 		print "Initial form filling successful for user " + STUDENT_INFORMATION[0][0]
 
-	if (ROOMTYPE == "3"):
+	if ((ROOMTYPE == "3") & (scriptSelectedRoom[3] != "2")):
 
 		for ii in range(2):
 
@@ -442,7 +442,6 @@ loadUserData()
 askUserQuestions()
 
 main()
-
 
 
 
